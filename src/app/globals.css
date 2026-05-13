@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-accent: var(--accent);
+  --color-accent-muted: var(--accent-muted);
+}
+
+:root {
+  --background: #000000;
+  --foreground: #ffffff;
+  --accent: #00f2ff;
+  --accent-muted: rgba(0, 242, 255, 0.2);
+}
+
+@layer base {
+  body {
+    @apply bg-black text-white antialiased overflow-hidden;
+    background: radial-gradient(circle at center, #0a0a0a 0%, #000000 100%);
+  }
+}
+
+/* Custom glow effects */
+.glow-accent {
+  box-shadow: 0 0 15px var(--accent-muted);
+}
+
+.text-glow {
+  text-shadow: 0 0 10px var(--accent-muted);
+}
