@@ -298,7 +298,7 @@ export default function Home() {
         <div className="w-8 h-8 bg-accent rounded flex items-center justify-center shadow-[0_0_15px_rgba(0,242,255,0.4)]">
           <Share2 className="w-5 h-5 text-black" />
         </div>
-        <h1 className="text-xl font-bold tracking-tighter text-glow text-white">AETHER</h1>
+        <h1 className="text-xl font-bold tracking-tighter text-glow text-white">BLIPSYNC</h1>
       </div>
 
       <div className="absolute top-8 right-8 flex items-center gap-6 text-[10px] text-white/50 uppercase tracking-widest hidden sm:flex z-50">
@@ -315,7 +315,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             className="text-5xl sm:text-6xl font-extrabold tracking-tighter lg:text-8xl text-white"
           >
-            Drop into <span className="text-accent italic drop-shadow-[0_0_15px_rgba(0,242,255,0.3)]">Aether.</span>
+            Drop into <span className="text-accent italic drop-shadow-[0_0_15px_rgba(0,242,255,0.3)]">BlipSync.</span>
           </motion.h2>
           <p className="text-white/40 max-w-[280px] sm:max-w-md mx-auto text-xs sm:text-sm px-4">
             Instant, private, peer-to-peer file sharing via decentralized radar.
