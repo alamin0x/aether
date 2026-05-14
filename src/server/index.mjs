@@ -71,13 +71,23 @@ async function getIceServers() {
           body: JSON.stringify({ ttl: 86400 })
         }
       );
-      const data = await response.json();
-      if (data.iceServers) {
-        iceServers.push(...data.iceServers);
+
+      if (!response.ok) {
+        console.error(`[TURN] Cloudflare API error: HTTP ${response.status} ${response.statusText}`);
+      } else {
+        const data = await response.json();
+        if (data.iceServers && data.iceServers.length > 0) {
+          iceServers.push(...data.iceServers);
+          console.log(`[TURN] ✅ Cloudflare added ${data.iceServers.length} ICE server(s)`);
+        } else {
+          console.warn('[TURN] Cloudflare responded OK but returned no iceServers:', JSON.stringify(data));
+        }
       }
     } catch (err) {
       console.error("[TURN] Cloudflare fetch failed:", err.message);
     }
+  } else {
+    console.log('[TURN] Cloudflare skipped — CF_TURN_TOKEN_ID or CF_API_TOKEN not set');
   }
   
   return iceServers;
