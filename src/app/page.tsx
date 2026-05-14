@@ -32,6 +32,7 @@ export default function Home() {
   }, [users]);
 
   const isJoinedRef = useRef(false);
+  const [feedback, setFeedback] = useState<{ type: 'accepted' | 'rejected', name: string } | null>(null);
 
   const getOrCreatePeer = (targetId: string, isInitiator: boolean) => {
     let pc = peersRef.current.get(targetId);
