@@ -19,12 +19,22 @@ export class PeerConnection {
   private currentFileSize: number = 0;
   private bytesReceived: number = 0;
 
-  constructor(socket: Socket, targetId: string, isInitiator: boolean) {
+  constructor(socket: Socket, targetId: string, isInitiator: boolean, iceServers?: RTCIceServer[]) {
     console.log(`[WebRTC] Initializing PC for ${targetId}, isInitiator: ${isInitiator}`);
     this.socket = socket;
     this.targetId = targetId;
+
+    const defaultIceServers: RTCIceServer[] = [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun3.l.google.com:19302" },
+      { urls: "stun:stun4.l.google.com:19302" },
+    ];
+
     this.pc = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+      iceServers: iceServers && iceServers.length > 0 ? iceServers : defaultIceServers,
+      iceCandidatePoolSize: 10,
     });
 
     this.pc.onicecandidate = (event) => {

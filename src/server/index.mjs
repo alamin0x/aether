@@ -23,11 +23,54 @@ io.engine.on("connection_error", (err) => {
 // Store room state
 const rooms = new Map();
 
+// Cloudflare TURN configuration
+const CF_TURN_TOKEN_ID = process.env.CF_TURN_TOKEN_ID || "7817a31c565e3bed6913cf93e363202e";
+const CF_API_TOKEN = process.env.CF_API_TOKEN || "5456c4b1ce742b2783c98ae58251a97859ddfa450df4d58f13ffef5a298e9a0f";
+
+async function getIceServers() {
+  const iceServers = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { 
+      urls: "turn:free.expressturn.com:3478", 
+      username: "000000002094082578", 
+      credential: "gu+C23JGVUcbRZnDUEhPGBxFLS0=" 
+    }
+  ];
+
+  try {
+    const response = await fetch(
+      `https://rtc.live.cloudflare.com/v1/turn/keys/${CF_TURN_TOKEN_ID}/credentials/generate-ice-servers`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${CF_API_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ttl: 86400 })
+      }
+    );
+    const data = await response.json();
+    if (data.iceServers) {
+      // Add Cloudflare servers to our list
+      iceServers.push(...data.iceServers);
+    }
+  } catch (err) {
+    console.error("Failed to fetch Cloudflare ICE servers, using ExpressTURN fallback:", err);
+  }
+  
+  return iceServers;
+}
+
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
 
-  socket.on('join-room', ({ roomId, userName }) => {
+  socket.on('join-room', async ({ roomId, userName }) => {
     socket.join(roomId);
+    
+    // Fetch dynamic ICE servers
+    const iceServers = await getIceServers();
+    socket.emit('ice-servers', iceServers);
     
     // Track user in room
     if (!rooms.has(roomId)) {

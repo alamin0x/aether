@@ -20,6 +20,7 @@ export default function Home() {
   const peersRef = useRef<Map<string, PeerConnection>>(new Map());
   const [transfers, setTransfers] = useState<Record<string, { progress: number, isTransferring: boolean, isReady: boolean }>>({});
   const roomIdRef = useRef(roomId);
+  const iceServersRef = useRef<RTCIceServer[]>([]);
 
   useEffect(() => {
     roomIdRef.current = roomId;
@@ -34,7 +35,7 @@ export default function Home() {
   const getOrCreatePeer = (targetId: string, isInitiator: boolean) => {
     let pc = peersRef.current.get(targetId);
     if (!pc) {
-      pc = new PeerConnection(socket!, targetId, isInitiator);
+      pc = new PeerConnection(socket!, targetId, isInitiator, iceServersRef.current);
       pc.setCallbacks(
         (progress) => updateTransfer(targetId, progress, true),
         (blob, name, senderName) => downloadFile(blob, name, targetId, senderName),
@@ -57,6 +58,11 @@ export default function Home() {
 
   useEffect(() => {
     if (!socket) return;
+
+    socket.on("ice-servers", (iceServers) => {
+      console.log("[Socket] Received dynamic ICE servers");
+      iceServersRef.current = iceServers;
+    });
 
     socket.on("user-joined", (user) => {
       setUsers((prev) => [...prev, user]);
