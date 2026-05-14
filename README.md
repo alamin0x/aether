@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📡 BlipSync
 
-## Getting Started
+**Instant, Private, Peer-to-Peer File Sharing via Decentralized Radar.**
 
-First, run the development server:
+[![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://blipsync.vercel.app)
+[![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![Socket.io](https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socketdotio&logoColor=white)](https://socket.io/)
+[![WebRTC](https://img.shields.io/badge/WebRTC-333333?style=for-the-badge&logo=webrtc&logoColor=white)](https://webrtc.org/)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+BlipSync is a high-performance web application designed for seamless, serverless file transfers. Using a radar-inspired interface, users can discover nearby devices in a virtual room and transmit files directly via encrypted WebRTC data channels.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ✨ Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- 🛰️ **Visual Radar UI:** Discover peers in real-time on a dynamic, interactive radar map.
+- 🔒 **True P2P Privacy:** Files are never stored on a server. Data moves directly from one browser to another.
+- 🚀 **High-Speed Transfers:** Built on WebRTC for the fastest possible transmission speeds allowed by your network.
+- 🛡️ **Encrypted & Secure:** End-to-end encryption for every file blip.
+- 📱 **Cross-Platform:** Works on desktop, tablet, and mobile browsers with zero installation.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🛠️ Technology Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Frontend:** [Next.js](https://nextjs.org/) (App Router), TypeScript, Tailwind CSS
+- **Animations:** [Framer Motion](https://www.framer.com/motion/)
+- **Signaling:** [Socket.io](https://socket.io/) (Node.js/Express)
+- **Data Transfer:** [WebRTC](https://webrtc.org/) (Data Channels)
+- **Icons:** [Lucide React](https://lucide.dev/)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🚀 Getting Started
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Prerequisites
+- Node.js (v18 or higher)
+- npm or yarn
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Local Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/alamin0x/aether.git
+   cd aether
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Run the development servers:**
+   ```bash
+   # Starts both the Next.js frontend and the Signaling server
+   npm run dev:all
+   ```
+
+4. **Open the app:**
+   Go to `http://localhost:3000` in your browser.
+
+---
+
+## 🌐 Hosting Guide
+
+### 1. Signaling Server (Render/Railway)
+The signaling server requires a persistent connection. We recommend **Render.com**:
+- **Build Command:** `npm install`
+- **Start Command:** `node src/server/index.mjs`
+
+### 2. Frontend (Vercel)
+Connect your GitHub repo to **Vercel**:
+- Add Environment Variable: `NEXT_PUBLIC_SIGNALING_SERVER`
+- Value: Your hosted Signaling Server URL (e.g., `https://your-server.onrender.com`)
+
+---
+
+## 🛡️ Privacy & Security
+BlipSync is built with privacy at its core. 
+- **Signaling Only:** Our servers only facilitate the initial handshake between peers. 
+- **No File Storage:** Once the handshake is complete, files are streamed directly between devices.
+- **Auto-Cleanup:** Connection metadata is cleared immediately after a peer disconnects.
+
+---
+
+## 📄 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+Developed with ❤️ for the decentralized web.
