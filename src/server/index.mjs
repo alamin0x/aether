@@ -41,8 +41,17 @@ async function getIceServers() {
 
   // Add ExpressTURN if configured in Render
   if (EXPRESS_TURN_URL && EXPRESS_TURN_USERNAME && EXPRESS_TURN_PASSWORD) {
+    // Auto-fix: ensure the URL has a valid turn: or turns: scheme prefix.
+    // A common mistake is setting the env var to "host:port" without the prefix,
+    // which causes RTCPeerConnection to throw a SyntaxError on the client.
+    let turnUrl = EXPRESS_TURN_URL.trim();
+    if (!turnUrl.startsWith('turn:') && !turnUrl.startsWith('turns:')) {
+      console.warn(`[TURN] EXPRESS_TURN_URL is missing scheme — auto-prefixing with "turn:"`);
+      turnUrl = 'turn:' + turnUrl;
+    }
+    console.log(`[TURN] Adding ExpressTURN: ${turnUrl}`);
     iceServers.push({
-      urls: EXPRESS_TURN_URL,
+      urls: turnUrl,
       username: EXPRESS_TURN_USERNAME,
       credential: EXPRESS_TURN_PASSWORD
     });
