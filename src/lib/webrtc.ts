@@ -109,6 +109,13 @@ export class PeerConnection {
 
     this.dataChannel.binaryType = "arraybuffer";
 
+    // ── Speed optimisation: event-based back-pressure ──────────────────────
+    // When bufferedAmount drops below this threshold the 'bufferedamountlow'
+    // event fires, allowing us to resume sending immediately instead of
+    // polling with setTimeout(50ms) — reduces idle wait to near zero.
+    const BUFFER_LOW_THRESHOLD = 256 * 1024; // 256 KB
+    this.dataChannel.bufferedAmountLowThreshold = BUFFER_LOW_THRESHOLD;
+
     this.dataChannel.onopen = () => {
       console.log(`[WebRTC] ✅ Data channel OPEN (peer: ${this.targetId})`);
       this.channelReadyResolve();
@@ -164,6 +171,29 @@ export class PeerConnection {
         }
       }
     };
+  }
+
+  // ─── Private: event-based buffer drain ─────────────────────────────────────
+  // Returns a Promise that resolves the moment the send buffer has drained
+  // below bufferedAmountLowThreshold. This is called instead of sleeping 50ms
+  // in a polling loop, giving us maximum throughput with zero wasted time.
+  private waitForBufferDrain(): Promise<void> {
+    if (!this.dataChannel || this.dataChannel.bufferedAmount <= this.dataChannel.bufferedAmountLowThreshold) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+      const onLow = () => {
+        this.dataChannel!.removeEventListener('bufferedamountlow', onLow);
+        resolve();
+      };
+      const onClose = () => {
+        this.dataChannel!.removeEventListener('bufferedamountlow', onLow);
+        this.dataChannel!.removeEventListener('close', onClose);
+        reject(new Error('Connection closed during transfer'));
+      };
+      this.dataChannel!.addEventListener('bufferedamountlow', onLow);
+      this.dataChannel!.addEventListener('close', onClose);
+    });
   }
 
   // ─── Private: flush buffered ICE candidates after remote desc is set ────────
@@ -295,25 +325,55 @@ export class PeerConnection {
         JSON.stringify({ type: "metadata", name: file.name, size: file.size, senderName })
       );
 
-      const CHUNK_SIZE = 16384; // 16 KB
+      // ── Chunk size: 256 KB for Chrome/Edge, 64 KB for Firefox ────────────
+      // Larger chunks = fewer messages = less overhead = much faster transfers.
+      // Chrome's SCTP layer handles up to 256 KB per send(); Firefox caps at 64 KB.
+      const isFirefox = typeof navigator !== 'undefined' && navigator.userAgent.includes('Firefox');
+      const CHUNK_SIZE = isFirefox ? 65536 : 262144; // 64 KB or 256 KB
+
+      // ── High-water mark: pause sending when buffer exceeds this ──────────
+      // Tuned to be large enough to keep the pipe full but small enough to
+      // avoid excessive memory use. Must be > bufferedAmountLowThreshold.
+      const HIGH_WATER_MARK = 1 * 1024 * 1024; // 1 MB
+
+      console.log(`[WebRTC] Chunk size: ${CHUNK_SIZE / 1024}KB, HWM: ${HIGH_WATER_MARK / 1024}KB`);
+
       let offset = 0;
 
+      // Pre-read the first chunk before the loop to pipeline disk reads
+      let nextChunk: ArrayBuffer | null = await file.slice(0, CHUNK_SIZE).arrayBuffer();
+
       while (offset < file.size) {
-        // Back-pressure: wait if the send buffer is getting full
-        while (this.dataChannel.bufferedAmount > 512 * 1024) {
-          await new Promise((r) => setTimeout(r, 50));
-          if (this.dataChannel.readyState !== "open") {
-            throw new Error("Connection closed mid-transfer");
-          }
+        if (this.dataChannel.readyState !== "open") {
+          throw new Error("Connection closed mid-transfer");
         }
 
-        const chunk = await file.slice(offset, offset + CHUNK_SIZE).arrayBuffer();
-        this.dataChannel.send(chunk);
+        // Back-pressure: wait for buffer to drain using event (not setTimeout!)
+        if (this.dataChannel.bufferedAmount > HIGH_WATER_MARK) {
+          await this.waitForBufferDrain();
+        }
+
+        const chunk = nextChunk!;
         offset += chunk.byteLength;
+
+        // Pre-read the NEXT chunk from disk while this one is being sent
+        // (overlaps I/O with network sending for maximum throughput)
+        if (offset < file.size) {
+          nextChunk = file.slice(offset, offset + CHUNK_SIZE).arrayBuffer().then(b => b);
+        } else {
+          nextChunk = null;
+        }
+
+        this.dataChannel.send(chunk);
         onProgress((offset / file.size) * 100);
+
+        // Await the pre-read so it's ready for the next iteration
+        if (nextChunk !== null) {
+          nextChunk = await nextChunk;
+        }
       }
 
-      console.log("[WebRTC] ✅ Send complete");
+      console.log(`[WebRTC] ✅ Send complete — ${(file.size / 1024 / 1024).toFixed(2)} MB`);
     } catch (err) {
       console.error("[WebRTC] Transfer error:", err);
       this.onError?.("Transfer Failed");
