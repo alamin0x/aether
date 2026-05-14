@@ -342,6 +342,7 @@ export class PeerConnection {
 
       // Pre-read the first chunk before the loop to pipeline disk reads
       let nextChunk: ArrayBuffer | null = await file.slice(0, CHUNK_SIZE).arrayBuffer();
+      let nextChunkPromise: Promise<ArrayBuffer> | null = null;
 
       while (offset < file.size) {
         if (this.dataChannel.readyState !== "open") {
@@ -359,17 +360,19 @@ export class PeerConnection {
         // Pre-read the NEXT chunk from disk while this one is being sent
         // (overlaps I/O with network sending for maximum throughput)
         if (offset < file.size) {
-          nextChunk = file.slice(offset, offset + CHUNK_SIZE).arrayBuffer().then(b => b);
+          nextChunkPromise = file.slice(offset, offset + CHUNK_SIZE).arrayBuffer();
         } else {
-          nextChunk = null;
+          nextChunkPromise = null;
         }
 
         this.dataChannel.send(chunk);
         onProgress((offset / file.size) * 100);
 
         // Await the pre-read so it's ready for the next iteration
-        if (nextChunk !== null) {
-          nextChunk = await nextChunk;
+        if (nextChunkPromise !== null) {
+          nextChunk = await nextChunkPromise;
+        } else {
+          nextChunk = null;
         }
       }
 
