@@ -11,6 +11,7 @@ import { PeerConnection } from "@/lib/webrtc";
 export default function Home() {
   const { socket, isConnected } = useSocket();
   const [isJoined, setIsJoined] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
   const [userName, setUserName] = useState("");
   const [roomId, setRoomId] = useState("1234");
   const [users, setUsers] = useState<any[]>([]);
@@ -33,8 +34,12 @@ export default function Home() {
   const [feedback, setFeedback] = useState<{ type: 'accepted' | 'rejected', name: string } | null>(null);
 
   const getOrCreatePeer = (targetId: string, isInitiator: boolean) => {
+    // Only create peer if we have ICE servers or if we've officially joined
+    if (!isJoined && !isJoining) return null;
+
     let pc = peersRef.current.get(targetId);
     if (!pc) {
+      console.log(`[UI] Creating PeerConnection for ${targetId}. ICE Servers available: ${iceServersRef.current.length}`);
       pc = new PeerConnection(socket!, targetId, isInitiator, iceServersRef.current);
       pc.setCallbacks(
         (progress) => updateTransfer(targetId, progress, true),
@@ -60,8 +65,10 @@ export default function Home() {
     if (!socket) return;
 
     socket.on("ice-servers", (iceServers) => {
-      console.log("[Socket] Received dynamic ICE servers");
+      console.log("[Socket] Received ICE servers, initializing radar...");
       iceServersRef.current = iceServers;
+      setIsJoined(true);
+      setIsJoining(false);
     });
 
     socket.on("user-joined", (user) => {
@@ -88,10 +95,11 @@ export default function Home() {
 
     socket.on("signal", async ({ senderId, signal }) => {
       const pc = getOrCreatePeer(senderId, false);
-      await pc.handleSignal(signal);
+      if (pc) await pc.handleSignal(signal);
     });
 
     return () => {
+      socket.off("ice-servers");
       socket.off("user-joined");
       socket.off("room-users");
       socket.off("user-left");
@@ -126,7 +134,7 @@ export default function Home() {
     // Secret room: Auto-download
     if (roomIdRef.current === "473238") {
       const pc = getOrCreatePeer(senderId, false);
-      pc.sendFeedback('accepted');
+      pc?.sendFeedback('accepted');
       executeDownload(blob, fileName, senderId);
       return;
     }
@@ -137,7 +145,7 @@ export default function Home() {
 
   const executeDownload = (blob: Blob, fileName: string, senderId: string) => {
     const pc = getOrCreatePeer(senderId, false);
-    pc.sendFeedback('accepted');
+    pc?.sendFeedback('accepted');
     
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -174,12 +182,13 @@ export default function Home() {
       setTimeout(() => setError(null), 3000);
       return;
     }
+    setIsJoining(true);
     socket!.emit("join-room", { roomId, userName });
-    setIsJoined(true);
   };
 
   const initiateTransfer = async (targetId: string, file: File) => {
     const pc = getOrCreatePeer(targetId, true);
+    if (!pc) return;
     await pc.createOffer();
     try {
       await pc.sendFile(file, userName, (progress) => updateTransfer(targetId, progress, true));
@@ -194,6 +203,12 @@ export default function Home() {
   const handleBlipClick = (userId: string) => {
     setTargetUserId(userId);
     fileInputRef.current?.click();
+  };
+
+  const getButtonText = () => {
+    if (!isConnected) return "Establishing Uplink...";
+    if (isJoining) return "Syncing ICE Nodes...";
+    return "Initialize Radar";
   };
 
   return (
