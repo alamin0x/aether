@@ -24,29 +24,31 @@ io.engine.on("connection_error", (err) => {
 const rooms = new Map();
 
 // Cloudflare TURN configuration
-const CF_TURN_TOKEN_ID = process.env.CF_TURN_TOKEN_ID || "7817a31c565e3bed6913cf93e363202e";
-const CF_API_TOKEN = process.env.CF_API_TOKEN || "5456c4b1ce742b2783c98ae58251a97859ddfa450df4d58f13ffef5a298e9a0f";
+const CF_TURN_TOKEN_ID = process.env.CF_TURN_TOKEN_ID;
+const CF_API_TOKEN = process.env.CF_API_TOKEN;
 
 // ExpressTURN configuration
-const EXPRESS_TURN_URL = process.env.EXPRESS_TURN_URL || "turn:free.expressturn.com:3478";
-const EXPRESS_TURN_USERNAME = process.env.EXPRESS_TURN_USERNAME || "000000002094082578";
-const EXPRESS_TURN_PASSWORD = process.env.EXPRESS_TURN_PASSWORD || "gu+C23JGVUcbRZnDUEhPGBxFLS0=";
+const EXPRESS_TURN_URL = process.env.EXPRESS_TURN_URL;
+const EXPRESS_TURN_USERNAME = process.env.EXPRESS_TURN_USERNAME;
+const EXPRESS_TURN_PASSWORD = process.env.EXPRESS_TURN_PASSWORD;
 
 async function getIceServers() {
+  // Always start with basic STUN
   const iceServers = [
     { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" }
+    { urls: "stun:stun1.l.google.com:19302" }
   ];
 
-  // Add ExpressTURN
-  iceServers.push({
-    urls: EXPRESS_TURN_URL,
-    username: EXPRESS_TURN_USERNAME,
-    credential: EXPRESS_TURN_PASSWORD
-  });
+  // Add ExpressTURN if configured in Render
+  if (EXPRESS_TURN_URL && EXPRESS_TURN_USERNAME && EXPRESS_TURN_PASSWORD) {
+    iceServers.push({
+      urls: EXPRESS_TURN_URL,
+      username: EXPRESS_TURN_USERNAME,
+      credential: EXPRESS_TURN_PASSWORD
+    });
+  }
 
-  // Add Cloudflare if tokens are present (using defaults if env is empty)
+  // Add Cloudflare if configured in Render
   if (CF_TURN_TOKEN_ID && CF_API_TOKEN) {
     try {
       const response = await fetch(
@@ -65,7 +67,7 @@ async function getIceServers() {
         iceServers.push(...data.iceServers);
       }
     } catch (err) {
-      console.error("Failed to fetch Cloudflare ICE servers:", err);
+      console.error("[TURN] Cloudflare fetch failed:", err.message);
     }
   }
   
