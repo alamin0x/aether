@@ -72,24 +72,27 @@ export default function Home() {
 
     socket.on("user-joined", (user) => {
       setUsers((prev) => [...prev, user]);
-      getOrCreatePeer(user.id, false);
+      // Don't pre-create peer here — wait for actual signaling to start
     });
 
     socket.on("room-users", (existingUsers) => {
       setUsers(existingUsers);
-      existingUsers.forEach((user: any) => {
-        getOrCreatePeer(user.id, false);
-      });
+      // Don't pre-create peers here — let initiateTransfer / signal handler create them
     });
 
     socket.on("user-left", (userId) => {
       setUsers((prev) => prev.filter((u) => u.id !== userId));
       const pc = peersRef.current.get(userId);
       if (pc) {
-        // Silently close without triggering error state
         pc.setCallbacks(() => {}, () => {}, () => {}, () => {}, () => {});
+        pc.destroy();
         peersRef.current.delete(userId);
       }
+      setTransfers(prev => {
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
     });
 
     socket.on("signal", async ({ senderId, signal }) => {
@@ -186,13 +189,33 @@ export default function Home() {
   };
 
   const initiateTransfer = async (targetId: string, file: File) => {
+    // If a peer already exists (created as non-initiator), we must replace it
+    // with an initiator peer so it creates the data channel.
+    const existing = peersRef.current.get(targetId);
+    if (existing) {
+      existing.setCallbacks(() => {}, () => {}, () => {}, () => {}, () => {});
+      existing.destroy();
+      peersRef.current.delete(targetId);
+    }
+
+    // Create fresh initiator peer
     const pc = getOrCreatePeer(targetId, true);
     if (!pc) return;
+
+    // Start the signaling handshake — this creates the offer and triggers
+    // the answerer to respond, which eventually opens the data channel.
     await pc.createOffer();
+
     try {
+      // Wait for the data channel to fully open (ICE + DTLS handshake)
+      // before pumping file data into it.
+      await pc.waitForChannel(15000);
       await pc.sendFile(file, userName, (progress) => updateTransfer(targetId, progress, true));
     } catch (err) {
+      console.error("[Transfer] Failed:", err);
       updateTransfer(targetId, 0, false);
+      setError("Transfer Failed — could not open P2P channel");
+      setTimeout(() => setError(null), 4000);
     }
   };
 

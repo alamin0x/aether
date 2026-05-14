@@ -42,6 +42,7 @@ export const Blip = ({ name, isTransferring, isReady, progress = 0 }: BlipProps)
               stroke="#00f2ff"
               strokeWidth="2"
               strokeDasharray="62.8"
+              initial={{ strokeDashoffset: 62.8 }}
               animate={{ strokeDashoffset: 62.8 - (62.8 * progress) / 100 }}
               transition={{ duration: 0.3 }}
             />
