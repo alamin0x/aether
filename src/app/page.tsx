@@ -300,7 +300,7 @@ export default function Home() {
                 <button
                   onClick={() => {
                     const pc = getOrCreatePeer(pendingFile.senderId, false);
-                    pc.sendFeedback('rejected');
+                    pc?.sendFeedback('rejected');
                     updateTransfer(pendingFile.senderId, 0, false);
                     setPendingFile(null);
                   }}
