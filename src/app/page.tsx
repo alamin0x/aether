@@ -31,15 +31,12 @@ export default function Home() {
     usersRef.current = users;
   }, [users]);
 
-  const [feedback, setFeedback] = useState<{ type: 'accepted' | 'rejected', name: string } | null>(null);
+  const isJoinedRef = useRef(false);
 
   const getOrCreatePeer = (targetId: string, isInitiator: boolean) => {
-    // Only create peer if we have ICE servers or if we've officially joined
-    if (!isJoined && !isJoining) return null;
-
     let pc = peersRef.current.get(targetId);
     if (!pc) {
-      console.log(`[UI] Creating PeerConnection for ${targetId}. ICE Servers available: ${iceServersRef.current.length}`);
+      console.log(`[WebRTC] Creating PeerConnection for ${targetId}. ICE Servers: ${iceServersRef.current.length}`);
       pc = new PeerConnection(socket!, targetId, isInitiator, iceServersRef.current);
       pc.setCallbacks(
         (progress) => updateTransfer(targetId, progress, true),
@@ -65,8 +62,9 @@ export default function Home() {
     if (!socket) return;
 
     socket.on("ice-servers", (iceServers) => {
-      console.log("[Socket] Received ICE servers, initializing radar...");
+      console.log("[Socket] Received ICE servers");
       iceServersRef.current = iceServers;
+      isJoinedRef.current = true;
       setIsJoined(true);
       setIsJoining(false);
     });
